@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>สมาธิเกม</title>
+  <meta name="description" content="เกมนั่งสมาธิ เก็บ EXP ผ่านด่าน พร้อมเสียงระฆังและเสียงช่วยสมาธิ" />
+  <meta name="theme-color" content="#4f46e5" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/tone@14.7.77/build/Tone.js"></script>
+  
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; overscroll-behavior: none; font-family: -apple-system, BlinkMacSystemFont, "Sarabun", "Noto Sans Thai", sans-serif; }
+    body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useRef } = React;
+
+    // ไอคอน SVG แทน lucide-react
+    const Icon = ({ path, size = 24, className = '', stroke = 2 }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" className={className}>
+        {path}
+      </svg>
+    );
+    const Play = (p) => <Icon {...p} path={<polygon points="5 3 19 12 5 21 5 3" fill="currentColor"/>} />;
+    const Pause = (p) => <Icon {...p} path={<><rect x="6" y="4" width="4" height="16" fill="currentColor"/><rect x="14" y="4" width="4" height="16" fill="currentColor"/></>} />;
+    const Lock = (p) => <Icon {...p} path={<><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>} />;
+    const Check = (p) => <Icon {...p} path={<polyline points="20 6 9 17 4 12"/>} />;
+    const Star = (p) => <Icon {...p} path={<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="currentColor"/>} />;
+    const Flame = (p) => <Icon {...p} path={<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>} />;
+    const Award = (p) => <Icon {...p} path={<><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></>} />;
+    const Zap = (p) => <Icon {...p} path={<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor"/>} />;
+    const Wind = (p) => <Icon {...p} path={<><path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/></>} />;
+    const Heart = (p) => <Icon {...p} path={<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>} />;
+    const Moon = (p) => <Icon {...p} path={<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>} />;
+    const Sun = (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></>} />;
+    const Sparkles = (p) => <Icon {...p} path={<path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/>} />;
+    const Mountain = (p) => <Icon {...p} path={<path d="M8 3l4 8 5-5 5 15H2L8 3z"/>} />;
+    const Trophy = (p) => <Icon {...p} path={<><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></>} />;
+    const ChevronLeft = (p) => <Icon {...p} path={<polyline points="15 18 9 12 15 6"/>} />;
+    const Volume2 = (p) => <Icon {...p} path={<><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></>} />;
+    const VolumeX = (p) => <Icon {...p} path={<><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></>} />;
+    const Music = (p) => <Icon {...p} path={<><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></>} />;
+
+    function App() {
+      const [view, setView] = useState('map');
+      const [currentStage, setCurrentStage] = useState(null);
+      const [isPlaying, setIsPlaying] = useState(false);
+      const [timeLeft, setTimeLeft] = useState(0);
+      const [totalTime, setTotalTime] = useState(0);
+      const [breathPhase, setBreathPhase] = useState('inhale');
+      const [breathCount, setBreathCount] = useState(0);
+      const [combo, setCombo] = useState(0);
+      const [focusScore, setFocusScore] = useState(100);
+      const [earnedExp, setEarnedExp] = useState(0);
+      const [showLevelUp, setShowLevelUp] = useState(false);
+      const [soundEnabled, setSoundEnabled] = useState(true);
+      const [ambientType, setAmbientType] = useState('singing-bowl');
+      const [audioReady, setAudioReady] = useState(false);
+
+      const [playerData, setPlayerData] = useState({
+        level: 1, exp: 0, totalExp: 0, streak: 0, lastPlayed: null,
+        completedStages: [], totalMinutes: 0,
+      });
+
+      const intervalRef = useRef(null);
+      const breathIntervalRef = useRef(null);
+      const bellRef = useRef(null);
+      const breathSynthRef = useRef(null);
+      const ambientRef = useRef(null);
+      const binauralLeftRef = useRef(null);
+      const binauralRightRef = useRef(null);
+      const gainRef = useRef(null);
+
+      const stages = [
+        { id: 1, name: 'ลมหายใจแรก', duration: 1, icon: Wind, color: 'from-sky-400 to-blue-500', expReward: 50, unlockLevel: 1 },
+        { id: 2, name: 'สายลมสงบ', duration: 2, icon: Wind, color: 'from-cyan-400 to-teal-500', expReward: 100, unlockLevel: 1 },
+        { id: 3, name: 'ใจเย็นเหมือนน้ำ', duration: 3, icon: Heart, color: 'from-teal-400 to-emerald-500', expReward: 150, unlockLevel: 2 },
+        { id: 4, name: 'ป่าสงัด', duration: 5, icon: Sparkles, color: 'from-emerald-400 to-green-500', expReward: 250, unlockLevel: 3 },
+        { id: 5, name: 'แสงจันทร์', duration: 7, icon: Moon, color: 'from-indigo-400 to-purple-500', expReward: 400, unlockLevel: 4 },
+        { id: 6, name: 'ยอดเขาทอง', duration: 10, icon: Mountain, color: 'from-purple-400 to-pink-500', expReward: 600, unlockLevel: 6 },
+        { id: 7, name: 'อรุณรุ่ง', duration: 12, icon: Sun, color: 'from-orange-400 to-rose-500', expReward: 800, unlockLevel: 8 },
+        { id: 8, name: 'จิตว่าง', duration: 15, icon: Sparkles, color: 'from-rose-400 to-pink-500', expReward: 1200, unlockLevel: 10 },
+        { id: 9, name: 'สมาธิทอง', duration: 20, icon: Trophy, color: 'from-amber-400 to-yellow-500', expReward: 2000, unlockLevel: 15 },
+      ];
+
+      const getExpForLevel = (lvl) => lvl * 200 + (lvl - 1) * 100;
+      const getLevelFromTotalExp = (totalExp) => {
+        let lvl = 1, required = 0;
+        while (true) {
+          const needed = getExpForLevel(lvl);
+          if (required + needed > totalExp) break;
+          required += needed;
+          lvl++;
+        }
+        return { level: lvl, currentExp: totalExp - required, nextLevelExp: getExpForLevel(lvl) };
+      };
+
+      useEffect(() => {
+        try {
+          const saved = localStorage.getItem('meditation-player');
+          if (saved) setPlayerData(JSON.parse(saved));
+        } catch (e) {}
+      }, []);
+
+      const savePlayerData = (data) => {
+        try { localStorage.setItem('meditation-player', JSON.stringify(data)); } catch (e) {}
+      };
+
+      const initAudio = async () => {
+        if (audioReady) return;
+        await Tone.start();
+        const reverb = new Tone.Reverb({ decay: 8, wet: 0.6 }).toDestination();
+        gainRef.current = new Tone.Gain(0.4).connect(reverb);
+        bellRef.current = new Tone.FMSynth({
+          harmonicity: 3.01, modulationIndex: 14,
+          oscillator: { type: 'sine' },
+          envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 8 },
+          modulation: { type: 'triangle' },
+          modulationEnvelope: { attack: 0.01, decay: 0.5, sustain: 0, release: 4 },
+        }).connect(gainRef.current);
+        breathSynthRef.current = new Tone.Synth({
+          oscillator: { type: 'sine' },
+          envelope: { attack: 1.5, decay: 0.1, sustain: 0.6, release: 2 },
+          volume: -18,
+        }).connect(gainRef.current);
+        setAudioReady(true);
+      };
+
+      const playBell = (note = 'C4') => {
+        if (!soundEnabled || !bellRef.current) return;
+        try { bellRef.current.triggerAttackRelease(note, '2n'); } catch (e) {}
+      };
+
+      const playBreathTone = (phase) => {
+        if (!soundEnabled || !breathSynthRef.current) return;
+        try {
+          const notes = { inhale: 'C5', hold: 'E5', exhale: 'G4', rest: null };
+          const note = notes[phase];
+          if (note) breathSynthRef.current.triggerAttackRelease(note, phase === 'exhale' ? '1n' : '2n');
+        } catch (e) {}
+      };
+
+      const startAmbient = (type) => {
+        stopAmbient();
+        if (!soundEnabled || type === 'none') return;
+        if (type === 'singing-bowl') {
+          ambientRef.current = new Tone.PolySynth(Tone.FMSynth, {
+            harmonicity: 2, modulationIndex: 8,
+            envelope: { attack: 4, decay: 2, sustain: 0.8, release: 6 },
+            volume: -22,
+          }).connect(gainRef.current);
+          ['C3', 'G3', 'C4', 'E4'].forEach((note, i) => {
+            setTimeout(() => { if (ambientRef.current) ambientRef.current.triggerAttack(note); }, i * 800);
+          });
+        } else if (type === 'binaural') {
+          binauralLeftRef.current = new Tone.Oscillator(432, 'sine');
+          binauralRightRef.current = new Tone.Oscillator(440, 'sine');
+          const panLeft = new Tone.Panner(-1).toDestination();
+          const panRight = new Tone.Panner(1).toDestination();
+          const gainL = new Tone.Gain(0.08).connect(panLeft);
+          const gainR = new Tone.Gain(0.08).connect(panRight);
+          binauralLeftRef.current.connect(gainL);
+          binauralRightRef.current.connect(gainR);
+          binauralLeftRef.current.start();
+          binauralRightRef.current.start();
+        } else if (type === 'rain') {
+          const noise = new Tone.Noise('pink');
+          const filter = new Tone.Filter(800, 'lowpass');
+          const gain = new Tone.Gain(0.15).toDestination();
+          noise.connect(filter);
+          filter.connect(gain);
+          noise.start();
+          ambientRef.current = { noise, filter, gain };
+        }
+      };
+
+      const stopAmbient = () => {
+        try {
+          if (ambientRef.current) {
+            if (ambientRef.current.noise) {
+              ambientRef.current.noise.stop();
+              ambientRef.current.noise.dispose();
+              ambientRef.current.filter.dispose();
+              ambientRef.current.gain.dispose();
+            } else if (ambientRef.current.releaseAll) {
+              ambientRef.current.releaseAll();
+              setTimeout(() => { try { ambientRef.current?.dispose(); } catch(e){} }, 3000);
+            }
+            ambientRef.current = null;
+          }
+          if (binauralLeftRef.current) { binauralLeftRef.current.stop(); binauralLeftRef.current.dispose(); binauralLeftRef.current = null; }
+          if (binauralRightRef.current) { binauralRightRef.current.stop(); binauralRightRef.current.dispose(); binauralRightRef.current = null; }
+        } catch (e) {}
+      };
+
+      useEffect(() => {
+        if (isPlaying && timeLeft > 0) {
+          intervalRef.current = setInterval(() => {
+            setTimeLeft((prev) => {
+              if (prev <= 1) { completeStage(); return 0; }
+              if (prev === 60 && totalTime > 120) playBell('E4');
+              return prev - 1;
+            });
+          }, 1000);
+        }
+        return () => clearInterval(intervalRef.current);
+      }, [isPlaying, timeLeft]);
+
+      useEffect(() => {
+        if (isPlaying) {
+          const phases = [
+            { phase: 'inhale', duration: 4000 },
+            { phase: 'hold', duration: 4000 },
+            { phase: 'exhale', duration: 6000 },
+            { phase: 'rest', duration: 2000 },
+          ];
+          let idx = 0;
+          setBreathPhase(phases[0].phase);
+          playBreathTone(phases[0].phase);
+          const runCycle = () => {
+            breathIntervalRef.current = setTimeout(() => {
+              idx = (idx + 1) % phases.length;
+              setBreathPhase(phases[idx].phase);
+              playBreathTone(phases[idx].phase);
+              if (phases[idx].phase === 'inhale') {
+                setBreathCount((c) => c + 1);
+                setCombo((c) => c + 1);
+              }
+              runCycle();
+            }, phases[idx].duration);
+          };
+          runCycle();
+        }
+        return () => clearTimeout(breathIntervalRef.current);
+      }, [isPlaying]);
+
+      const startStage = async (stage) => {
+        if (playerData.level < stage.unlockLevel) return;
+        await initAudio();
+        setCurrentStage(stage);
+        setTimeLeft(stage.duration * 60);
+        setTotalTime(stage.duration * 60);
+        setBreathCount(0);
+        setCombo(0);
+        setFocusScore(100);
+        setView('session');
+        setTimeout(() => playBell('C4'), 300);
+        setTimeout(() => playBell('G3'), 1200);
+        setTimeout(() => { playBell('C4'); startAmbient(ambientType); setIsPlaying(true); }, 2400);
+      };
+
+      const togglePlay = () => {
+        if (isPlaying) { setFocusScore((s) => Math.max(0, s - 10)); setCombo(0); stopAmbient(); }
+        else startAmbient(ambientType);
+        setIsPlaying(!isPlaying);
+      };
+
+      const completeStage = () => {
+        setIsPlaying(false);
+        stopAmbient();
+        setTimeout(() => playBell('C4'), 100);
+        setTimeout(() => playBell('E4'), 900);
+        setTimeout(() => playBell('G4'), 1800);
+        const baseExp = currentStage.expReward;
+        const comboBonus = Math.floor(combo * 2);
+        const focusBonus = Math.floor(baseExp * (focusScore / 100) * 0.3);
+        const totalEarned = baseExp + comboBonus + focusBonus;
+        setEarnedExp(totalEarned);
+        const prevLevel = playerData.level;
+        const newTotalExp = playerData.totalExp + totalEarned;
+        const levelInfo = getLevelFromTotalExp(newTotalExp);
+        const today = new Date().toDateString();
+        const lastDate = playerData.lastPlayed ? new Date(playerData.lastPlayed).toDateString() : null;
+        const yesterday = new Date(Date.now() - 86400000).toDateString();
+        let newStreak = playerData.streak;
+        if (lastDate === today) {} else if (lastDate === yesterday) newStreak += 1; else newStreak = 1;
+        const completedStages = playerData.completedStages.includes(currentStage.id)
+          ? playerData.completedStages : [...playerData.completedStages, currentStage.id];
+        const newData = { ...playerData, level: levelInfo.level, exp: levelInfo.currentExp,
+          totalExp: newTotalExp, streak: newStreak, lastPlayed: new Date().toISOString(),
+          completedStages, totalMinutes: playerData.totalMinutes + currentStage.duration };
+        setPlayerData(newData);
+        savePlayerData(newData);
+        if (levelInfo.level > prevLevel) setShowLevelUp(true);
+        setView('result');
+      };
+
+      const exitSession = () => { setIsPlaying(false); stopAmbient(); setCurrentStage(null); setView('map'); };
+      const toggleSound = () => {
+        const newState = !soundEnabled;
+        setSoundEnabled(newState);
+        if (!newState) stopAmbient();
+        else if (isPlaying) startAmbient(ambientType);
+      };
+      const changeAmbient = (type) => {
+        setAmbientType(type);
+        if (isPlaying && soundEnabled) { stopAmbient(); setTimeout(() => startAmbient(type), 100); }
+      };
+
+      const formatTime = (s) => `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
+      const getBreathLabel = () => ({ inhale: 'หายใจเข้า', hold: 'กลั้นไว้', exhale: 'หายใจออก', rest: 'พัก' }[breathPhase]);
+      const getBreathScale = () => breathPhase === 'inhale' ? 'scale-110' : breathPhase === 'exhale' ? 'scale-75' : 'scale-95';
+      const getBreathDuration = () => ({ inhale: 'duration-[4000ms]', hold: 'duration-[4000ms]', exhale: 'duration-[6000ms]', rest: 'duration-[2000ms]' }[breathPhase]);
+
+      const levelInfo = getLevelFromTotalExp(playerData.totalExp);
+      const expPercent = (levelInfo.currentExp / levelInfo.nextLevelExp) * 100;
+
+      if (view === 'session' && currentStage) {
+        const progress = totalTime > 0 ? ((totalTime - timeLeft) / totalTime) * 100 : 0;
+        const StageIcon = currentStage.icon;
+        return (
+          <div className={`min-h-screen bg-gradient-to-br ${currentStage.color} flex flex-col items-center justify-between p-6 text-white`}>
+            <div className="w-full flex justify-between items-center pt-4">
+              <button onClick={exitSession} className="text-white/80 text-sm flex items-center gap-1">
+                <ChevronLeft size={18} /> ออก
+              </button>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3 bg-white/15 rounded-full px-4 py-1.5 backdrop-blur-sm">
+                  <div className="flex items-center gap-1"><Zap size={14} className="text-yellow-300" /><span className="text-sm font-medium">{combo}</span></div>
+                  <div className="w-px h-4 bg-white/30" />
+                  <div className="flex items-center gap-1"><Star size={14} className="text-yellow-300" /><span className="text-sm font-medium">{focusScore}</span></div>
+                </div>
+                <button onClick={toggleSound} className="p-2 bg-white/15 rounded-full backdrop-blur-sm">
+                  {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {soundEnabled && (
+              <div className="flex gap-2 mt-2 bg-white/10 rounded-full p-1 backdrop-blur-sm text-xs">
+                {[{id:'singing-bowl',label:'ระฆังร้อง'},{id:'binaural',label:'Alpha 8Hz'},{id:'rain',label:'ฝนตก'},{id:'none',label:'เงียบ'}].map(opt => (
+                  <button key={opt.id} onClick={() => changeAmbient(opt.id)}
+                    className={`px-3 py-1 rounded-full transition ${ambientType === opt.id ? 'bg-white text-gray-800' : 'text-white/80'}`}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-col items-center gap-6 flex-1 justify-center">
+              <div className="flex items-center gap-2 text-white/90">
+                <StageIcon size={20} />
+                <span className="text-lg">{currentStage.name}</span>
+              </div>
+              <div className="relative flex items-center justify-center">
+                <div className={`absolute w-72 h-72 rounded-full bg-white/10 transition-all ease-in-out ${getBreathDuration()} ${getBreathScale()}`} />
+                <div className={`absolute w-56 h-56 rounded-full bg-white/15 transition-all ease-in-out ${getBreathDuration()} ${getBreathScale()}`} />
+                <div className={`w-40 h-40 rounded-full bg-white/25 backdrop-blur-sm flex items-center justify-center transition-all ease-in-out ${getBreathDuration()} ${getBreathScale()}`}>
+                  <span className="text-xl font-light">{isPlaying ? getBreathLabel() : 'หยุดพัก'}</span>
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-6xl font-extralight tracking-wider">{formatTime(timeLeft)}</div>
+                <div className="text-white/70 text-sm mt-2">ลมหายใจ {breathCount} รอบ</div>
+              </div>
+              <div className="w-64 h-1 bg-white/20 rounded-full overflow-hidden">
+                <div className="h-full bg-white transition-all duration-1000" style={{ width: `${progress}%` }} />
+              </div>
+              {combo >= 10 && (
+                <div className="bg-yellow-400/30 backdrop-blur-sm rounded-full px-4 py-1 text-sm font-medium animate-pulse">
+                  🔥 Combo x{combo}!
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-6 pb-8">
+              <button onClick={togglePlay} className="p-6 rounded-full bg-white text-gray-800 shadow-lg">
+                {isPlaying ? <Pause size={28} /> : <Play size={28} className="ml-1" />}
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      if (view === 'result' && currentStage) {
+        const baseExp = currentStage.expReward;
+        const comboBonus = Math.floor(combo * 2);
+        const focusBonus = Math.floor(baseExp * (focusScore / 100) * 0.3);
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex flex-col items-center justify-center p-6 text-white">
+            <div className="max-w-sm w-full">
+              {showLevelUp && (
+                <div className="mb-6 text-center animate-bounce">
+                  <div className="inline-block bg-gradient-to-r from-yellow-400 to-orange-500 text-gray-900 font-bold px-6 py-3 rounded-full shadow-lg">
+                    ⭐ LEVEL UP! ⭐
+                  </div>
+                  <div className="mt-2 text-4xl font-light">Lv. {playerData.level}</div>
+                </div>
+              )}
+              <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 border border-white/20 shadow-2xl">
+                <div className="text-center mb-6">
+                  <div className={`w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br ${currentStage.color} flex items-center justify-center shadow-lg mb-4`}>
+                    <Check size={36} stroke={3} />
+                  </div>
+                  <h2 className="text-2xl font-light">ผ่านด่าน!</h2>
+                  <p className="text-white/70 text-sm mt-1">{currentStage.name}</p>
+                </div>
+                <div className="space-y-3 mb-6">
+                  <div className="flex justify-between items-center text-sm bg-white/5 rounded-xl px-4 py-3">
+                    <span className="text-white/70">EXP พื้นฐาน</span><span className="font-medium">+{baseExp}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm bg-white/5 rounded-xl px-4 py-3">
+                    <span className="text-white/70 flex items-center gap-1"><Zap size={14} /> Combo Bonus</span>
+                    <span className="font-medium text-yellow-300">+{comboBonus}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm bg-white/5 rounded-xl px-4 py-3">
+                    <span className="text-white/70 flex items-center gap-1"><Star size={14} /> Focus Bonus</span>
+                    <span className="font-medium text-yellow-300">+{focusBonus}</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-gradient-to-r from-yellow-400/20 to-orange-500/20 border border-yellow-400/30 rounded-xl px-4 py-3">
+                    <span className="font-medium">รวมได้รับ</span>
+                    <span className="font-bold text-xl text-yellow-300">+{earnedExp} EXP</span>
+                  </div>
+                </div>
+                <div className="mb-6">
+                  <div className="flex justify-between text-xs text-white/70 mb-1">
+                    <span>Lv. {playerData.level}</span>
+                    <span>{levelInfo.currentExp} / {levelInfo.nextLevelExp}</span>
+                  </div>
+                  <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 transition-all duration-1000" style={{ width: `${expPercent}%` }} />
+                  </div>
+                </div>
+                <button onClick={() => { setShowLevelUp(false); setView('map'); }}
+                  className="w-full bg-white text-gray-900 font-medium py-3 rounded-xl">ไปต่อ</button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen bg-gradient-to-b from-slate-100 via-blue-50 to-indigo-100 p-5">
+          <div className="max-w-md mx-auto">
+            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-5 text-white shadow-lg mb-5">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="text-xs text-white/70">นักสมาธิ</div>
+                  <div className="text-2xl font-light">Level {playerData.level}</div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-center bg-white/15 rounded-xl px-3 py-2">
+                    <div className="flex items-center gap-1 text-orange-300"><Flame size={16} /><span className="font-bold">{playerData.streak}</span></div>
+                    <div className="text-[10px] text-white/60">Streak</div>
+                  </div>
+                  <div className="text-center bg-white/15 rounded-xl px-3 py-2">
+                    <div className="flex items-center gap-1 text-yellow-300"><Award size={16} /><span className="font-bold">{playerData.completedStages.length}</span></div>
+                    <div className="text-[10px] text-white/60">ด่าน</div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-xs text-white/80 mb-1">
+                  <span>EXP</span><span>{levelInfo.currentExp} / {levelInfo.nextLevelExp}</span>
+                </div>
+                <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-yellow-300 to-orange-400 transition-all duration-500" style={{ width: `${expPercent}%` }} />
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center mb-5">
+              <h1 className="text-xl font-medium text-gray-800">เส้นทางสู่จิตสงบ</h1>
+              <p className="text-xs text-gray-500 mt-1">ผ่านด่านเพื่อเก็บ EXP และปลดล็อกด่านใหม่</p>
+              <div className="inline-flex items-center gap-1 mt-2 text-xs text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
+                <Music size={12} /> มีเสียงระฆังและเสียงช่วยสมาธิ
+              </div>
+            </div>
+
+            <div className="space-y-3 pb-8">
+              {stages.map((stage, idx) => {
+                const StageIcon = stage.icon;
+                const isLocked = playerData.level < stage.unlockLevel;
+                const isCompleted = playerData.completedStages.includes(stage.id);
+                const isLeft = idx % 2 === 0;
+                return (
+                  <div key={stage.id} className={`flex ${isLeft ? 'justify-start' : 'justify-end'}`}>
+                    <button onClick={() => !isLocked && startStage(stage)} disabled={isLocked}
+                      className={`relative w-[85%] ${isLocked ? 'opacity-50' : 'active:scale-[0.98]'} transition bg-white rounded-2xl p-4 shadow-md border-2 ${isCompleted ? 'border-green-400' : 'border-white'}`}>
+                      {isCompleted && (
+                        <div className="absolute -top-2 -right-2 w-7 h-7 bg-green-500 rounded-full flex items-center justify-center shadow-md">
+                          <Check size={16} className="text-white" stroke={3} />
+                        </div>
+                      )}
+                      {isLocked && (
+                        <div className="absolute -top-2 -right-2 w-7 h-7 bg-gray-400 rounded-full flex items-center justify-center shadow-md">
+                          <Lock size={14} className="text-white" />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3">
+                        <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${stage.color} flex items-center justify-center text-white shadow-md shrink-0`}>
+                          <StageIcon size={24} />
+                        </div>
+                        <div className="flex-1 text-left min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-gray-400">ด่าน {stage.id}</span>
+                            {isLocked && <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">Lv.{stage.unlockLevel}</span>}
+                          </div>
+                          <div className="font-semibold text-gray-800 truncate">{stage.name}</div>
+                          <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                            <span>⏱ {stage.duration} นาที</span>
+                            <span className="text-orange-500 font-medium">+{stage.expReward} EXP</span>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="text-center text-xs text-gray-400 pb-4">
+              💫 ฝึกทุกวันเพื่อรักษา Streak
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ลงทะเบียน service worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(e => console.log('SW fail:', e));
+      });
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
